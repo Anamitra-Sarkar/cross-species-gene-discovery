@@ -15,13 +15,68 @@ Endpoints:
 from __future__ import annotations
 
 import os
+import re
 from typing import Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from .auth import get_current_user
 from .model_store import get_model_status, is_model_ready, load_approved_graph
+
+# Gene ID validation: reasonable chars, no path traversal, length bound
+_GENE_ID_RE = re.compile(r"^[A-Za-z0-9:_\-.\|]+$")
+_MAX_GENE_ID_LEN = 200
+_MAX_QUERY_LEN = 500
+
+
+class HealthResponse(BaseModel):
+    status: str
+    service: str
+
+
+class ReadyResponse(BaseModel):
+    ready: bool
+    approved: bool
+    revision: Optional[str]
+    artifact_path: Optional[str]
+    message: str
+
+
+class GeneSearchResult(BaseModel):
+    gene_id: str
+    species: str
+    label: int
+
+
+class GeneSearchResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    query: str
+    results: list[GeneSearchResult]
+    message: Optional[str] = None
+    model_ready: bool
+
+
+class OrthologInfo(BaseModel):
+    gene_id: str
+    species: str
+    orthology_confidence: Optional[float] = None
+    confidence: Optional[float] = None
+    source_positive: Optional[bool] = None
+
+
+class PredictionResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    gene_id: str
+    species: str
+    predicted_score: float
+    go_term: str
+    go_term_name: str
+    explanation: dict
+    model_revision: Optional[str]
 
 app = FastAPI(
     title="Cross-Species Gene Function Discovery",
@@ -38,12 +93,32 @@ app.add_middleware(
 )
 
 
-@app.get("/health")
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Return clean 422 for validation errors instead of raw 500."""
+    # Sanitize errors to avoid leaking internals, but keep useful messages
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+
+def _validate_gene_id(gene_id: str) -> str:
+    """Validate gene_id path param; raises 400 for malformed IDs instead of 500."""
+    if not gene_id or not gene_id.strip():
+        raise HTTPException(status_code=400, detail="gene_id must be non-empty")
+    if len(gene_id) > _MAX_GENE_ID_LEN:
+        raise HTTPException(status_code=400, detail=f"gene_id too long (max {_MAX_GENE_ID_LEN})")
+    if ".." in gene_id or "/" in gene_id or "\\" in gene_id:
+        raise HTTPException(status_code=400, detail="gene_id contains invalid characters")
+    if not _GENE_ID_RE.match(gene_id):
+        raise HTTPException(status_code=400, detail=f"gene_id contains invalid characters: {gene_id!r}")
+    return gene_id
+
+
+@app.get("/health", response_model=HealthResponse)
 def health() -> dict:
     return {"status": "ok", "service": "cross-species-gene-discovery"}
 
 
-@app.get("/ready")
+@app.get("/ready", response_model=ReadyResponse)
 def readiness() -> dict:
     status = get_model_status()
     return {
@@ -55,19 +130,25 @@ def readiness() -> dict:
     }
 
 
-@app.get("/genes/search")
+@app.get("/genes/search", response_model=GeneSearchResponse)
 def search_genes(
-    q: str = Query(..., min_length=1, description="Search query for gene ID or symbol"),
+    q: str = Query(..., min_length=1, max_length=500, description="Search query for gene ID or symbol"),
     limit: int = Query(20, ge=1, le=100),
     user: Optional[dict] = Depends(get_current_user),
 ) -> dict:
     """Search target-species genes. Requires model artifact to have gene list; otherwise returns empty or mock."""
+    # Explicit blank/whitespace check: Query min_length passes "   " (treated as 3 chars) -> return 400
+    if not q.strip():
+        raise HTTPException(status_code=422, detail="query must be non-empty (whitespace-only not allowed)")
+    if len(q) > _MAX_QUERY_LEN:
+        raise HTTPException(status_code=400, detail=f"query too long (max {_MAX_QUERY_LEN})")
+    q_stripped = q.strip()
     status = get_model_status()
 
     # If no model loaded, return empty with honest message (not fabricating results)
     if not status.loaded:
         return {
-            "query": q,
+            "query": q_stripped,
             "results": [],
             "message": "Model not yet released — gene search unavailable (no artifact loaded).",
             "model_ready": False,
@@ -75,10 +156,10 @@ def search_genes(
 
     graph = load_approved_graph()
     if graph is None:
-        return {"query": q, "results": [], "message": "Failed to load graph artifact.", "model_ready": False}
+        return {"query": q_stripped, "results": [], "message": "Failed to load graph artifact.", "model_ready": False}
 
     # Search: substring match on gene_id (case-insensitive)
-    q_lower = q.lower()
+    q_lower = q_stripped.lower()
     matches = []
     for idx, gid in enumerate(graph.gene_ids):
         if q_lower in gid.lower():
@@ -92,10 +173,10 @@ def search_genes(
         if len(matches) >= limit:
             break
 
-    return {"query": q, "results": matches, "model_ready": True}
+    return {"query": q_stripped, "results": matches, "model_ready": True}
 
 
-@app.get("/genes/{gene_id}/predict")
+@app.get("/genes/{gene_id}/predict", response_model=PredictionResponse)
 def predict_gene(
     gene_id: str,
     user: Optional[dict] = Depends(get_current_user),
@@ -106,7 +187,9 @@ def predict_gene(
     Returns predicted score + ortholog explanation.
 
     Fail-closed: 503 if model not yet released.
+    Validates gene_id and returns 400 for malformed IDs, 404 for unknown IDs.
     """
+    gene_id = _validate_gene_id(gene_id)
     if not is_model_ready():
         status = get_model_status()
         raise HTTPException(
@@ -186,6 +269,7 @@ def get_orthologs(
     gene_id: str,
     user: Optional[dict] = Depends(get_current_user),
 ) -> dict:
+    gene_id = _validate_gene_id(gene_id)
     if not is_model_ready():
         status = get_model_status()
         raise HTTPException(status_code=503, detail={"error": "Model not yet released", "message": status.message})

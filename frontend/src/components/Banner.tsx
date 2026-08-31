@@ -8,7 +8,7 @@ type ReadyState = {
 export default function Banner({ ready }: { ready: ReadyState }) {
   if (ready === null) {
     return (
-      <div style={{ background: "#f1f5f9", color: "#64748b", textAlign: "center", padding: "0.6rem", fontSize: "0.85rem" }}>
+      <div role="status" aria-live="polite" style={{ background: "#f1f5f9", color: "#64748b", textAlign: "center", padding: "0.6rem", fontSize: "0.85rem" }}>
         Checking model status...
       </div>
     );
@@ -17,6 +17,8 @@ export default function Banner({ ready }: { ready: ReadyState }) {
   if (!ready.ready) {
     return (
       <div
+        role="alert"
+        aria-live="assertive"
         style={{
           background: "#fef3c7",
           borderBottom: "1px solid #fcd34d",
@@ -38,6 +40,8 @@ export default function Banner({ ready }: { ready: ReadyState }) {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       style={{
         background: "#dcfce7",
         borderBottom: "1px solid #86efac",

@@ -145,11 +145,14 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Optio
             raise HTTPException(status_code=401, detail="Missing Authorization header")
         return None
 
-    # Expect "Bearer <token>"
-    if not authorization.startswith("Bearer "):
+    # Normalize header: strip leading/trailing whitespace before checking scheme
+    authorization = authorization.strip()
+    if not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Invalid Authorization header format; expected 'Bearer <token>'")
 
-    token = authorization[len("Bearer ") :]
+    token = authorization[7:].strip()  # after "Bearer "
+    if not token:
+        raise HTTPException(status_code=401, detail="Bearer token is empty")
     try:
         user = verify_bearer_token(token)
         return user

@@ -47,17 +47,24 @@ export default function GeneSearch({
         boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
       }}
     >
-      <h2 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 12 }}>
+      <h2 id="search-heading" style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 12 }}>
         Target-Species Gene Search
       </h2>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <label htmlFor="gene-search-input" style={{ position: "absolute", left: -9999, width: 1, height: 1, overflow: "hidden" }}>
+          Search genes by ID
+        </label>
         <input
+          id="gene-search-input"
+          aria-labelledby="search-heading"
+          aria-label="Search genes by ID"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && doSearch()}
           placeholder="e.g. TARGET_GENE_0001 or SOURCE_GENE_"
           style={{
             flex: 1,
+            minWidth: 180,
             padding: "0.6rem 0.85rem",
             border: "1px solid #cbd5e1",
             borderRadius: 8,
@@ -68,6 +75,8 @@ export default function GeneSearch({
         <button
           onClick={doSearch}
           disabled={loading}
+          aria-label={loading ? "Searching" : "Search genes"}
+          aria-busy={loading}
           style={{
             padding: "0.6rem 1.1rem",
             background: loading ? "#94a3b8" : "#0f172a",
@@ -77,22 +86,29 @@ export default function GeneSearch({
             fontWeight: 600,
             cursor: loading ? "not-allowed" : "pointer",
             fontSize: "0.9rem",
+            whiteSpace: "nowrap",
           }}
         >
           {loading ? "Searching..." : "Search"}
         </button>
       </div>
 
-      {message && (
-        <p style={{ marginTop: 10, fontSize: "0.82rem", color: "#64748b" }}>{message}</p>
-      )}
+      <div aria-live="polite" aria-atomic="true">
+        {message && (
+          <p role="status" style={{ marginTop: 10, fontSize: "0.82rem", color: "#64748b" }}>{message}</p>
+        )}
+      </div>
 
       {results.length > 0 && (
-        <ul style={{ listStyle: "none", marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+        <ul aria-label="Search results" style={{ listStyle: "none", marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
           {results.map((r) => (
             <li
               key={r.gene_id}
               onClick={() => onSelect(r.gene_id)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(r.gene_id); } }}
+              role="button"
+              tabIndex={0}
+              aria-label={`View prediction for ${r.gene_id} taxon ${r.species}`}
               style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -121,7 +137,7 @@ export default function GeneSearch({
                   taxon:{r.species}
                 </span>
               </span>
-              <span style={{ color: "#64748b" }} onClick={(e) => { e.stopPropagation(); onSelect(r.gene_id); }}>
+              <span style={{ color: "#64748b" }} aria-hidden="true">
                 View prediction &rarr;
               </span>
             </li>

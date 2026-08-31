@@ -91,8 +91,17 @@ class CrossSpeciesGraph:
     def save(self, path: str | Path) -> None:
         """Save graph to JSON (lightweight) or .pt (torch)."""
         path = Path(path)
+        # Ensure parent directory exists
+        if path.parent != Path("."):
+            path.parent.mkdir(parents=True, exist_ok=True)
         if path.suffix == ".pt":
-            data = self.to_torch_data()
+            try:
+                data = self.to_torch_data()
+            except ImportError:
+                # torch not available: fallback to JSON
+                path = path.with_suffix(".json")
+                self._save_json(path)
+                return
             try:
                 import torch
 
@@ -118,6 +127,8 @@ class CrossSpeciesGraph:
     @staticmethod
     def load(path: str | Path) -> "CrossSpeciesGraph":
         path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Graph file not found: {path}")
         if path.suffix == ".pt":
             try:
                 import torch
@@ -152,13 +163,20 @@ class CrossSpeciesGraph:
                 )
             except ImportError:
                 pass
+            except Exception as e:
+                raise ValueError(f"Failed to load .pt graph {path}: {e}") from e
         # JSON fallback
-        obj = json.loads(path.read_text())
+        try:
+            obj = json.loads(path.read_text(encoding="utf-8-sig"))
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON graph file {path}: {e}") from e
+        if "gene_ids" not in obj or "edges" not in obj:
+            raise ValueError(f"Invalid graph JSON {path}: missing required keys 'gene_ids' or 'edges'")
         return CrossSpeciesGraph(
             gene_ids=obj["gene_ids"],
             gene_to_idx={g: i for i, g in enumerate(obj["gene_ids"])},
-            species=obj["species"],
-            labels={k: int(v) for k, v in obj["labels"].items()},
+            species=obj.get("species", ["unknown"] * len(obj["gene_ids"])),
+            labels={k: int(v) for k, v in obj.get("labels", {}).items()},
             edges=[tuple(e) for e in obj["edges"]],
             features=obj.get("features"),
             feature_names=obj.get("feature_names", []),

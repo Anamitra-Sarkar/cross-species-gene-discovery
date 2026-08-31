@@ -49,7 +49,7 @@ export default function GeneDetail({
 
   if (loading) {
     return (
-      <div style={cardStyle}>
+      <div style={cardStyle} aria-busy="true" aria-live="polite">
         <p style={{ color: "#64748b" }}>Loading prediction for {geneId}...</p>
       </div>
     );
@@ -58,7 +58,7 @@ export default function GeneDetail({
   if (error) {
     const isNotReleased = error.toLowerCase().includes("not yet released") || !ready;
     return (
-      <div style={{ ...cardStyle, borderColor: isNotReleased ? "#fcd34d" : "#fecaca", background: isNotReleased ? "#fffbeb" : "#fef2f2" }}>
+      <div role="alert" aria-live="assertive" style={{ ...cardStyle, borderColor: isNotReleased ? "#fcd34d" : "#fecaca", background: isNotReleased ? "#fffbeb" : "#fef2f2" }}>
         <h3 style={{ color: isNotReleased ? "#92400e" : "#991b1b" }}>
           {isNotReleased ? "Model not yet released — prediction unavailable" : "Error"}
         </h3>
@@ -72,10 +72,12 @@ export default function GeneDetail({
 
   if (!data) return null;
 
-  const pct = (data.predicted_score * 100).toFixed(1);
+  const scoreNum = Number(data.predicted_score);
+  const safeScore = Number.isFinite(scoreNum) ? Math.max(0, Math.min(1, scoreNum)) : 0;
+  const pct = (safeScore * 100).toFixed(1);
 
   return (
-    <div style={{ ...cardStyle, marginTop: "1.5rem" }}>
+    <div style={{ ...cardStyle, marginTop: "1.5rem" }} aria-live="polite">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h2 style={{ fontSize: "1.05rem", fontWeight: 700 }}>
@@ -99,10 +101,11 @@ export default function GeneDetail({
         </div>
         <div style={{ textAlign: "right" }}>
           <div
+            aria-label={`Predicted score ${pct} percent`}
             style={{
               display: "inline-block",
-              background: data.predicted_score > 0.5 ? "#dcfce7" : "#f1f5f9",
-              color: data.predicted_score > 0.5 ? "#166534" : "#475569",
+              background: safeScore > 0.5 ? "#dcfce7" : "#f1f5f9",
+              color: safeScore > 0.5 ? "#166534" : "#475569",
               padding: "0.35rem 0.7rem",
               borderRadius: 8,
               fontWeight: 700,

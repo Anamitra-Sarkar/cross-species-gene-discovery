@@ -33,15 +33,39 @@ def main() -> None:
     parser.add_argument("--output", required=True, help="Output path (.json or .pt)")
     args = parser.parse_args()
 
+    orth_path = Path(args.orthology_path)
+    if not orth_path.exists():
+        parser.error(f"orthology file not found: {args.orthology_path}")
+    if args.go_annotations_path and not Path(args.go_annotations_path).exists():
+        parser.error(f"GO annotations file not found: {args.go_annotations_path}")
+    out_path = Path(args.output)
+    if out_path.parent != Path(".") and not out_path.parent.exists():
+        try:
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            parser.error(f"cannot create output directory {out_path.parent}: {e}")
+
     print(f"[build_graph] Parsing orthology: {args.orthology_path}")
-    edges = parse_orthology_file(args.orthology_path)
+    try:
+        edges = parse_orthology_file(args.orthology_path)
+    except Exception as e:
+        parser.error(f"failed to parse orthology file {args.orthology_path}: {e}")
     print(f"[build_graph] Found {len(edges)} ortholog edges")
+
+    # Validate GO term format
+    import re
+
+    if not re.match(r"^GO:\d{7}$", args.go_term):
+        parser.error(f"invalid GO term format {args.go_term!r}; expected GO:NNNNNNN")
 
     labels: dict[str, int] = {}
     if args.go_annotations_path:
-        ec = set(args.evidence_codes.split(",")) if args.evidence_codes else None
+        ec = set(s.strip() for s in args.evidence_codes.split(",")) if args.evidence_codes else None
         print(f"[build_graph] Parsing GO annotations: {args.go_annotations_path} (term={args.go_term})")
-        anns = parse_gaf(args.go_annotations_path, go_term=args.go_term, evidence_codes=ec, taxon_filter=args.taxon_filter)
+        try:
+            anns = parse_gaf(args.go_annotations_path, go_term=args.go_term, evidence_codes=ec, taxon_filter=args.taxon_filter)
+        except Exception as e:
+            parser.error(f"failed to parse GAF file {args.go_annotations_path}: {e}")
         print(f"[build_graph] Found {len(anns)} annotations for {args.go_term}")
         # Positive gene set
         positives = {a.gene_id for a in anns}

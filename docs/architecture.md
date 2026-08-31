@@ -21,17 +21,17 @@ Real data sources (no auth)          Pipeline                    Models         
 ### 1. `data_pipeline/` — Data ingestion and graph construction
 
 - **`orthology.py`** — Parses OrthoDB/eggNOG orthology data. Supports two input formats:
-  - *Simplified edge list* (TSV: `og_id  gene_id_1  species_1  gene_id_2  species_2  score`) — used by fixtures and bulk post-processing.
-  - *Native OrthoDB TAB* (`*_OGs.tab` with columns `og_id, gene_id, taxid, ...`) — expands ortholog groups into pairwise edges.
+  - *Simplified edge list* (TSV: `og_id  gene_id_1  species_1  gene_id_2  species_2  score`) — used by fixtures and bulk post-processing. Hardened for real file quirks: BOM stripping, comment lines with leading whitespace, whitespace vs tab handling, score range [0,1] validation with line-numbered errors, empty-field checks.
+  - *Native OrthoDB TAB* (`*_OGs.tab` with columns `og_id, gene_id, taxid, ...`) — expands ortholog groups into pairwise edges. Hardened: skips leading comment/blank lines, handles variant header names, pipe taxon normalization.
   CLI: `python -m data_pipeline.orthology --orthology-path <tsv> --output <json>`
 
-- **`go_annotations.py`** — Parses GO Annotation File (GAF 2.2) format (17-column TSV, see `docs/data_sources.md`). Filters by GO term, evidence codes, taxon, aspect. Produces binary label vectors per gene.
+- **`go_annotations.py`** — Parses GO Annotation File (GAF 2.2) format (17-column TSV, see `docs/data_sources.md`). Filters by GO term, evidence codes, taxon, aspect. Produces binary label vectors per gene. Hardened: handles leading-whitespace `!` comments, BOM, pipe-separated multi-taxon values, evidence codes case-insensitive, GO:NNNNNNN validation, missing trailing columns, NOT-qualifier tokenization, gzipped double suffix `.gaf.gz`.
   CLI flags: `--go-annotations-path`, `--go-term`, `--evidence-codes`, `--taxon-filter`
 
-- **`graph.py`** — Builds a cross-species orthology graph as a `torch_geometric.data.Data` object (or pure Python/NetworkX fallback for pipeline without torch). Nodes = genes (with species attribute), edges = ortholog pairs (weighted by confidence score). Node features: degree, orthology-confidence-derived scalar(s), species one-hot — real, simple, computable without sequence embeddings.
+- **`graph.py`** — Builds a cross-species orthology graph as a `torch_geometric.data.Data` object (or pure Python/NetworkX fallback for pipeline without torch). Nodes = genes (with species attribute), edges = ortholog pairs (weighted by confidence score). Node features: degree, orthology-confidence-derived scalar(s), species one-hot — real, simple, computable without sequence embeddings. `save()` auto-creates parent dirs; `load()` validates existence and JSON shape with clear errors.
   CLI: `python -m data_pipeline.build_graph --orthology-path ... --go-annotations-path ... --output data/graph.pt`
 
-- **`build_graph.py`** — End-to-end CLI that wires orthology + GO parsing + graph construction. No downloads in sandbox; real-run procedure documented in `docs/data_sources.md`.
+- **`build_graph.py`** — End-to-end CLI that wires orthology + GO parsing + graph construction. Validates file existence, GO term format, and creates output parent dirs; no downloads in sandbox; real-run procedure documented in `docs/data_sources.md`.
 
 ### 2. `model/` — Graph learning
 
@@ -55,17 +55,19 @@ Real data sources (no auth)          Pipeline                    Models         
 - **Endpoints:**
   - `GET /health` — liveness, always 200.
   - `GET /ready` — readiness, 200 only if model loaded via release gate.
-  - `GET /genes/search?q=<query>` — search target-species genes.
-  - `GET /genes/{gene_id}/predict` — predicted GO-term score + ortholog explanation (which source orthologs drove prediction, with confidence).
+  - `GET /genes/search?q=<query>` — search target-species genes (validated: 422 on empty/whitespace query, 400 on overly long query).
+  - `GET /genes/{gene_id}/predict` — predicted GO-term score + ortholog explanation (which source orthologs drove prediction, with confidence). Validated gene_id, 400 on malformed IDs, 404 on unknown, 503 when gate closed.
+  - `GET /genes/{gene_id}/orthologs` — direct ortholog neighbors for a gene (edges incident to gene, with confidence).
 
 ### 4. `frontend/` — React + Vite + TypeScript
 
 - Tooling: Vite + TypeScript + React.
 - **Real, non-boilerplate UI:**
-  - Target-species gene search box (calls `GET /genes/search`).
-  - Gene detail card: predicted GO term / function score, explanation list (source orthologs with scores), species badges.
-  - Honest abstention banner: shows "Model not yet released — predictions unavailable" when `GET /ready` reports not-ready, matching backend release gate.
-  - Clean, modern scientific-dashboard design (CSS, no heavy UI framework dependency).
+  - Target-species gene search box (calls `GET /genes/search`). Accessible: labeled input, `aria-live` results, keyboard-navigable list (role=button, Enter/Space), `aria-busy` on loading.
+  - Gene detail card: predicted GO term / function score, explanation list (source orthologs with scores), species badges. Handles NaN/edge scores safely; loading uses `aria-busy`, errors use `role="alert"`.
+  - Honest abstention banner: shows "Model not yet released — predictions unavailable" when `GET /ready` reports not-ready, matching backend release gate. Banner uses `role="alert"`/`role="status"` with `aria-live`.
+  - Clean, modern scientific-dashboard design (CSS, no heavy UI framework dependency). Responsive: grid cards use `minmax(260px,1fr)`, search flex wraps at narrow widths, `focus-visible` outline, skip-to-content link.
+  - Meta description + viewport; header/footer semantic landmarks.
 - Dev: `npm install && npm run dev` (Vite). Build: `npm run build`.
 
 ### 5. `tests/` — Pytest

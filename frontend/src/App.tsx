@@ -49,9 +49,9 @@ export default function App() {
 
       <Banner ready={ready} />
 
-      <main style={{ flex: 1, maxWidth: 960, width: "100%", margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <main id="main-content" style={{ flex: 1, maxWidth: 960, width: "100%", margin: "0 auto", padding: "2rem 1.5rem" }}>
         {/* Info cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
           <div style={cardStyle}>
             <h3 style={cardTitleStyle}>Orthology Graph</h3>
             <p style={cardTextStyle}>
