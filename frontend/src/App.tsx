@@ -14,7 +14,7 @@ export default function App() {
   const [ready, setReady] = useState<ReadyState | null>(null);
   const [selectedGene, setSelectedGene] = useState<string | null>(null);
 
-  const apiBase = import.meta.env.VITE_API_BASE || "";
+  const apiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE || "";
 
   useEffect(() => {
     fetch(`${apiBase}/ready`)

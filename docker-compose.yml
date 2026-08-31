@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # Release gate — OFF by default (safe, fail-closed).
+      # The backend will return 503 for prediction endpoints until you
+      # explicitly approve a model artifact. To enable predictions:
+      #   MODEL_RELEASE_APPROVED=true
+      #   APPROVED_ARTIFACT_REVISION=v1.0
+      #   MODEL_ARTIFACT_PATH=/app/data/graph.json  (mount your artifact)
+      MODEL_RELEASE_APPROVED: "false"
+      APPROVED_ARTIFACT_REVISION: ""
+      MODEL_ARTIFACT_PATH: ""
+      # Firebase auth — disabled by default (permissive mock mode).
+      # Set FIREBASE_AUTH_ENABLED=true and mount a service account JSON to enforce.
+      FIREBASE_SERVICE_ACCOUNT_JSON: ""
+      FIREBASE_AUTH_ENABLED: "false"
+    # Uncomment to mount a local artifact for testing:
+    # volumes:
+    #   - ./data:/app/data:ro
+    restart: unless-stopped
