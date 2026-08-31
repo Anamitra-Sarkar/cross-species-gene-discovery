@@ -47,6 +47,28 @@ export default function App() {
         </div>
       </header>
 
+      {/* Hero banner — cross-species orthology illustration */}
+      <div
+        style={{
+          width: "100%",
+          overflow: "hidden",
+          background: "#0f172a",
+          borderBottom: "1px solid #1e293b",
+        }}
+      >
+        <img
+          src="/hero.png"
+          alt="Illustration of a cross-species orthology network — interconnected gene nodes from multiple species linked by orthology edges, with DNA helix and cellular motifs representing evolution-aware functional annotation transfer via graph learning"
+          style={{
+            width: "100%",
+            height: "clamp(180px, 32vw, 380px)",
+            objectFit: "cover",
+            objectPosition: "center",
+            display: "block",
+          }}
+        />
+      </div>
+
       <Banner ready={ready} />
 
       <main id="main-content" style={{ flex: 1, maxWidth: 960, width: "100%", margin: "0 auto", padding: "2rem 1.5rem" }}>
