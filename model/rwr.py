@@ -41,19 +41,24 @@ def build_transition_matrix(graph: CrossSpeciesGraph, weighted: bool = True) -> 
     if n == 0:
         return sparse.csc_matrix((0, 0))
 
-    # Build adjacency (undirected, add both directions)
-    rows: list[int] = []
-    cols: list[int] = []
-    data: list[float] = []
-    for s, t, w in graph.edges:
-        weight = w if weighted else 1.0
-        rows.extend([t, s])
-        cols.extend([s, t])
-        data.extend([weight, weight])
-
-    if not data:
+    if not graph.edges:
         # No edges: return identity-like? Actually zeros (isolated nodes stay isolated)
         return sparse.csc_matrix((n, n))
+
+    # Build adjacency (undirected, add both directions). A real orthology
+    # graph at Ascomycota scale has hundreds of millions of edges; the
+    # previous pure-Python per-edge loop (list.extend x3 per edge) was
+    # confirmed intractable at that scale (636M edges -> ~1.9B individual
+    # Python-level list appends). Vectorized via numpy instead -- same
+    # adjacency, same weights, no Python-level loop over edges.
+    edge_arr = np.asarray(graph.edges, dtype=np.float64)  # (E, 3): src, dst, weight
+    src = edge_arr[:, 0].astype(np.int64)
+    dst = edge_arr[:, 1].astype(np.int64)
+    w = edge_arr[:, 2] if weighted else np.ones(len(edge_arr), dtype=np.float64)
+
+    rows = np.concatenate([dst, src])
+    cols = np.concatenate([src, dst])
+    data = np.concatenate([w, w])
 
     adj = sparse.coo_matrix((data, (rows, cols)), shape=(n, n)).tocsc()
 
