@@ -67,19 +67,37 @@ def main() -> None:
         except Exception as e:
             parser.error(f"failed to parse GAF file {args.go_annotations_path}: {e}")
         print(f"[build_graph] Found {len(anns)} annotations for {args.go_term}")
-        # Positive gene set
+        # Positive gene set. GAF gene ids (e.g. SGD systematic ids like
+        # "S000000001") are a DIFFERENT identifier namespace from this
+        # module's orthology gene ids (OrthoDB's own "<taxid>_<n>:<seq>"
+        # scheme) -- they do not match by string equality, and no
+        # cross-reference/bridge between the two is implemented here.
+        # Unioning unmatched annotation gene ids directly into the node set
+        # (the previous behaviour) silently created isolated nodes with zero
+        # orthology edges, so RWR/GNN propagation from them touches nothing
+        # -- a graph that "has labels" but is structurally meaningless for
+        # the cross-species task. Only genes already present in the real
+        # orthology graph are labeled; annotations that don't resolve to an
+        # orthology node are counted and reported, never silently added.
         positives = {a.gene_id for a in anns}
-        # Need all genes referenced in orthology + annotations
         all_genes = set()
         for e in edges:
             all_genes.add(e.gene_a)
             all_genes.add(e.gene_b)
-        for a in anns:
-            all_genes.add(a.gene_id)
         for g in all_genes:
             labels[g] = 1 if g in positives else 0
         num_pos = sum(labels.values())
-        print(f"[build_graph] Labels: {num_pos} positive / {len(labels)} total")
+        n_unresolved = len(positives - all_genes)
+        print(f"[build_graph] Labels: {num_pos} positive / {len(labels)} total "
+              f"(within the real orthology graph)")
+        if n_unresolved:
+            print(
+                f"[build_graph] WARNING: {n_unresolved}/{len(positives)} GAF-annotated genes "
+                "did not match any orthology-graph gene id (different identifier namespaces, "
+                "no cross-reference bridge implemented) and were excluded rather than added "
+                "as disconnected nodes. A real fix needs a GAF<->orthology gene-id bridge "
+                "(e.g. via OrthoDB's own gene_xrefs UniProt/GOterm cross-references)."
+            )
     else:
         # No GAF: all-zero labels (structure-only graph)
         print("[build_graph] No GAF provided — labels all zero (structure-only)")
