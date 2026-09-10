@@ -28,12 +28,8 @@ export default function Banner({ ready }: { ready: ReadyState }) {
           fontSize: "0.85rem",
         }}
       >
-        <strong>Model not yet released</strong> — predictions unavailable.{" "}
-        <span style={{ opacity: 0.85 }}>{ready.message}</span>
-        <span style={{ display: "block", fontSize: "0.78rem", marginTop: 2, opacity: 0.7 }}>
-          The backend release gate is closed. Set <code>MODEL_RELEASE_APPROVED=true</code> and{" "}
-          <code>APPROVED_ARTIFACT_REVISION</code> to enable predictions.
-        </span>
+        <strong>Predictions aren't available yet.</strong>{" "}
+        <span style={{ opacity: 0.85 }}>Our team is finishing validation before enabling live results.</span>
       </div>
     );
   }

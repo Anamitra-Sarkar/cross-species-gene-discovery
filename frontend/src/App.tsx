@@ -27,47 +27,31 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <header
-        style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)",
-          color: "white",
-          padding: "1.5rem 2rem",
-          borderBottom: "3px solid #38bdf8",
-        }}
-      >
-        <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em" }}>
-            Cross-Species Gene Function Discovery
+      {/* Nav */}
+      <nav style={{ maxWidth: 960, margin: "0 auto", width: "100%", boxSizing: "border-box", padding: "24px 24px 0", display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg, #38bdf8, #b45309)", color: "white", fontWeight: 700, fontSize: 13 }}>CS</span>
+        <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 18 }}>Cross-Species Atlas</span>
+      </nav>
+
+      <section style={{ maxWidth: 960, margin: "0 auto", width: "100%", boxSizing: "border-box", padding: "32px 24px 40px", display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 40, alignItems: "center" }}>
+        <div>
+          <div style={{ textTransform: "uppercase", letterSpacing: "0.14em", fontSize: 12, fontWeight: 700, color: "#0284c7", marginBottom: 14 }}>Evolution-aware gene function</div>
+          <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 32, lineHeight: 1.15, margin: "0 0 18px" }}>
+            Borrow what evolution <em style={{ fontStyle: "italic", color: "#0284c7" }}>already knows.</em>
           </h1>
-          <p style={{ opacity: 0.8, fontSize: "0.9rem", marginTop: 4 }}>
-            Evolution-aware graph learning — orthology-based functional annotation transfer
-            via random walk &amp; GNN over cross-species orthology graphs.
+          <p style={{ color: "#475569", fontSize: 16, lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
+            Cross-Species Atlas predicts a gene's likely function by learning from well-studied genes in other
+            species — tracing the evolutionary relationships that connect them.
           </p>
         </div>
-      </header>
-
-      {/* Hero banner — cross-species orthology illustration */}
-      <div
-        style={{
-          width: "100%",
-          overflow: "hidden",
-          background: "#0f172a",
-          borderBottom: "1px solid #1e293b",
-        }}
-      >
-        <img
-          src="/hero.png"
-          alt="Illustration of a cross-species orthology network — interconnected gene nodes from multiple species linked by orthology edges, with DNA helix and cellular motifs representing evolution-aware functional annotation transfer via graph learning"
-          style={{
-            width: "100%",
-            height: "clamp(180px, 32vw, 380px)",
-            objectFit: "cover",
-            objectPosition: "center",
-            display: "block",
-          }}
-        />
-      </div>
+        <figure style={{ margin: 0 }}>
+          <img
+            src="/hero.png"
+            alt="Illustration of a cross-species orthology network — interconnected gene nodes from multiple species linked by orthology edges, with DNA helix and cellular motifs representing evolution-aware functional annotation transfer via graph learning"
+            style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 18, border: "1px solid #e2e8f0", boxShadow: "0 24px 50px rgba(15,23,42,0.15)", display: "block" }}
+          />
+        </figure>
+      </section>
 
       <Banner ready={ready} />
 
@@ -75,29 +59,24 @@ export default function App() {
         {/* Info cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
           <div style={cardStyle}>
-            <h3 style={cardTitleStyle}>Orthology Graph</h3>
+            <h3 style={cardTitleStyle}>Built on real orthology data</h3>
             <p style={cardTextStyle}>
-              Nodes are genes from 2+ species; edges connect orthologs from OrthoDB / eggNOG,
-              weighted by orthology confidence.
+              Genes across species are linked by their evolutionary relationships, weighted by how confidently
+              they're related.
             </p>
-            <span style={badgeStyle}>OrthoDB + GO / GOA</span>
           </div>
           <div style={cardStyle}>
-            <h3 style={cardTitleStyle}>Two Models</h3>
+            <h3 style={cardTitleStyle}>Tested rigorously</h3>
             <p style={cardTextStyle}>
-              <strong>RWR</strong> (random walk with restart) baseline +{" "}
-              <strong>GraphSAGE/GCN</strong> learned model. Cross-species holdout
-              evaluation (source-only training).
+              A learned graph model is compared against a strong baseline, evaluated on species it never trained on.
             </p>
-            <span style={badgeStyle}>RWR &amp; GNN</span>
           </div>
           <div style={cardStyle}>
-            <h3 style={cardTitleStyle}>Target: GO:0007049</h3>
+            <h3 style={cardTitleStyle}>Starting with cell cycle</h3>
             <p style={cardTextStyle}>
-              Default target is <strong>cell cycle</strong> (GO:0007049) — a well-studied
-              Biological Process term with extensive yeast annotation.
+              The initial focus is <strong>cell cycle</strong> function — a well-studied biological process with
+              rich reference annotation.
             </p>
-            <span style={badgeStyle}>GO Biological Process</span>
           </div>
         </div>
 
@@ -137,8 +116,7 @@ export default function App() {
           background: "white",
         }}
       >
-        Data sources: OrthoDB (Kuznetsov et al. 2023), Gene Ontology / GOA (Gene Ontology Consortium 2023) — see{" "}
-        <code>docs/data_sources.md</code> for endpoints &amp; citations. Test fixtures are explicitly synthetic.
+        Built on real evolutionary orthology and gene function annotation data.
       </footer>
     </div>
   );
