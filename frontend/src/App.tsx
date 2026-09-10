@@ -33,7 +33,7 @@ export default function App() {
         <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 18 }}>Cross-Species Atlas</span>
       </nav>
 
-      <section style={{ maxWidth: 960, margin: "0 auto", width: "100%", boxSizing: "border-box", padding: "32px 24px 40px", display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 40, alignItems: "center" }}>
+      <section className="cs-hero" style={{ maxWidth: 960, margin: "0 auto", width: "100%", boxSizing: "border-box", padding: "32px 24px 40px", display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 40, alignItems: "center" }}>
         <div>
           <div style={{ textTransform: "uppercase", letterSpacing: "0.14em", fontSize: 12, fontWeight: 700, color: "#0284c7", marginBottom: 14 }}>Evolution-aware gene function</div>
           <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 32, lineHeight: 1.15, margin: "0 0 18px" }}>

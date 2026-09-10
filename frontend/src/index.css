@@ -6,3 +6,6 @@ a { color: #2563eb; }
   header h1 { font-size: 1.2rem !important; }
   header p { font-size: 0.82rem !important; }
 }
+@media (max-width: 800px) {
+  .cs-hero { grid-template-columns: 1fr !important; }
+}
